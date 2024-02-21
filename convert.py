@@ -138,57 +138,68 @@ class DQNAgent:
         self.optimizer.step()
 
 # single game episode
-def play_one(env, agent, tagent, eps, gamma, copy_period, learn=True):
-    env.reset()
+def play_one(env, agent, opponent, eps, gamma, copy_period, learn=True):
+        env.reset()
 
-    observation = env.board.copy().flatten()
-    prev_observation = observation.copy()
-
-    done = False
-    total_reward = 0
-
-    while not done:
-        if learn:
-            action = agent.select_action(observation)
-        else:
-            action = int(input('Player 1 input: '))
-
-        _, reward, done = env.step(action)
-        total_reward += reward
-
-        agent.replay_memory.append((prev_observation, action, reward, observation, done))
-
-        if len(agent.replay_memory) > agent.batch_size:
-            batch = agent.replay_memory.sample(agent.batch_size)
-            agent.update_q_network(batch)
-
-        prev_observation = observation.copy()
         observation = env.board.copy().flatten()
-
-        if done:
-            break
-
-        if learn:
-            action = agent.select_action(rev(observation))
-        else:
-            action = int(input('Player 2 input: '))
-
-        _, reward, done = env.step(action)
-        total_reward += reward
-
-        agent.replay_memory.append((prev_observation, action, reward, observation, done))
-
-        if len(agent.replay_memory) > agent.batch_size:
-            batch = agent.replay_memory.sample(agent.batch_size)
-            agent.update_q_network(batch)
-
         prev_observation = observation.copy()
-        observation = env.board.copy().flatten()
 
-        if done:
-            break
+        done = False
+        total_reward = 0
 
-    return total_reward
+        while not done:
+            if learn:
+                action = agent.select_action(observation)
+            else:
+                if opponent == "self":
+                    action = agent.select_action(observation)
+                elif opponent == "random":
+                    action = np.random.randint(7)
+                else:
+                    raise ValueError("Invalid opponent type")
+
+            _, reward, done = env.step(action)
+            total_reward += reward
+
+            agent.replay_memory.append((prev_observation, action, reward, observation, done))
+
+            if len(agent.replay_memory) > agent.batch_size:
+                batch = agent.replay_memory.sample(agent.batch_size)
+                agent.update_q_network(batch)
+
+            prev_observation = observation.copy()
+            observation = env.board.copy().flatten()
+
+            if done:
+                break
+
+            if learn:
+                action = agent.select_action(rev(observation))
+            else:
+                if opponent == "self":
+                    action = agent.select_action(rev(observation))
+                elif opponent == "random":
+                    action = np.random.randint(7)
+                else:
+                    raise ValueError("Invalid opponent type")
+
+            _, reward, done = env.step(action)
+            total_reward += reward
+
+            agent.replay_memory.append((prev_observation, action, reward, observation, done))
+
+            if len(agent.replay_memory) > agent.batch_size:
+                batch = agent.replay_memory.sample(agent.batch_size)
+                agent.update_q_network(batch)
+
+            prev_observation = observation.copy()
+            observation = env.board.copy().flatten()
+
+            if done:
+                break
+
+        return total_reward
+
 
 class ReplayMemory:
     def __init__(self, capacity):
@@ -244,7 +255,7 @@ target_dqn = DQN()
 replay_memory = ReplayMemory(capacity=100000)
 agent = DQNAgent(dqn, target_dqn, replay_memory)
 
-gamma = 0.90
+gamma = 0.92
 eps = 0.01
 copy_period = 50
 N =100
