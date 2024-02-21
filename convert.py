@@ -95,7 +95,7 @@ class DQN(nn.Module):
 # want to implement episilon decay method
 # inspo from ->  https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 class DQNAgent:
-    def __init__(self, dqn, target_dqn, replay_memory, gamma=0.99, epsilon=0.1, learning_rate=0.01, batch_size=64):
+    def __init__(self, dqn, target_dqn, replay_memory, gamma=0.99, epsilon=0.1, learning_rate=0.001, batch_size=32):
         self.dqn = dqn
         self.target_dqn = target_dqn
         self.replay_memory = replay_memory
