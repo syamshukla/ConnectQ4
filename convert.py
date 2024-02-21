@@ -190,11 +190,19 @@ class ReplayMemory:
     def sample(self, batch_size):
         indices = np.random.choice(len(self.memory), batch_size, replace=False)
         return [self.memory[i] for i in indices]
-
 def update_board():
     print("Current Game Board:")
     for row in env.board:
-        print(" ".join(map(str, row)))
+        print("|", end=" ")
+        for cell in row:
+            if cell == 1:  # Assuming 1 represents player 1's token
+                print("X", end=" ")
+            elif cell == -1:  # Assuming 2 represents player 2's token
+                print("O", end=" ")
+            else:
+                print(" ", end=" ")
+        print("|")
+    print("| 1 2 3 4 5 6 7 |")
     print()
 
 def hello_callback(value):
@@ -240,7 +248,7 @@ agent = DQNAgent(dqn, target_dqn, replay_memory)
 gamma = 0.99
 copy_period = 50
 
-N = 15
+N = 100
 total_rewards = np.empty(N)
 avg_rewards = []
 
@@ -268,6 +276,7 @@ while True:
     while not env.check_winner()[0] and not np.all(env.board != 0):
         if env.current_player == user_player:
             action = int(input("Your move: "))
+            action -= 1
         else:
             # Agent's move
             action = agent.select_action(rev(env.board.flatten()))
