@@ -95,7 +95,7 @@ class DQN(nn.Module):
 # want to implement episilon decay method
 # inspo from ->  https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 class DQNAgent:
-    def __init__(self, dqn, target_dqn, replay_memory, gamma=0.99, epsilon=0.1, learning_rate=0.001, batch_size=128):
+    def __init__(self, dqn, target_dqn, replay_memory, gamma=0.99, epsilon=0.1, learning_rate=0.001, batch_size=32):
         self.dqn = dqn
         self.target_dqn = target_dqn
         self.replay_memory = replay_memory
@@ -241,13 +241,13 @@ def update_board():
 env = Connect4Env()
 dqn = DQN()
 target_dqn = DQN()
-replay_memory = ReplayMemory(capacity=10000)
+replay_memory = ReplayMemory(capacity=100000)
 agent = DQNAgent(dqn, target_dqn, replay_memory)
 
-gamma = 0.99
-eps = 0.2
+gamma = 0.90
+eps = 0.01
 copy_period = 50
-N = 100
+N =100
 total_rewards = np.empty(N)
 avg_rewards = []
 
@@ -260,6 +260,10 @@ for n in range(N):
         avg_reward = total_rewards[max(0, n - 10):(n + 1)].mean()
         avg_rewards.append(avg_reward)
         print("Episode:", n, "Total Reward:", total_reward, "Average Reward (last 10):", avg_reward)
+# show the total wins and losses:
+print("Total wins:", (total_rewards == 1).sum())
+print("Total losses:", (total_rewards == -1).sum())
+print("Total draws:", (total_rewards == 0).sum())
 
 # Console-based gameplay
 # Console-based gameplay against the trained agent
