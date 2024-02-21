@@ -57,6 +57,16 @@ class Connect4Env:
                 for col in range(self.cols - 3):
                     if np.all(self.board[row:row+4, col:col+4].diagonal() == player):
                         return True, player
+            
+            # Check for a win diagonally (from top-right to bottom-left)
+            for row in range(self.rows - 3):
+                for col in range(3, self.cols):
+                    if self.board[row, col] == player and \
+                    self.board[row + 1, col - 1] == player and \
+                    self.board[row + 2, col - 2] == player and \
+                    self.board[row + 3, col - 3] == player:
+                        return True, player
+
 
         # Check for a draw
         if np.all(self.board != 0):
@@ -190,6 +200,7 @@ class ReplayMemory:
     def sample(self, batch_size):
         indices = np.random.choice(len(self.memory), batch_size, replace=False)
         return [self.memory[i] for i in indices]
+    
 def update_board():
     print("Current Game Board:")
     for row in env.board:
@@ -248,7 +259,7 @@ agent = DQNAgent(dqn, target_dqn, replay_memory)
 gamma = 0.99
 copy_period = 50
 
-N = 100
+N = 10
 total_rewards = np.empty(N)
 avg_rewards = []
 
