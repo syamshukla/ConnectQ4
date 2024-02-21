@@ -190,15 +190,6 @@ def play_one(env, agent, tagent, eps, gamma, copy_period, learn=True):
 
     return total_reward
 
-
-# reversing the sides
-# allows the AI to play as player2 by swapping the roles of the players
-def rev(a):
-    b = a.copy()
-    b[a == 1] = 2
-    b[a == 2] = 1
-    return b.copy()
-
 class ReplayMemory:
     def __init__(self, capacity):
         self.capacity = capacity
@@ -217,6 +208,15 @@ class ReplayMemory:
         indices = np.random.choice(len(self.memory), batch_size, replace=False)
         return [self.memory[i] for i in indices]
     
+
+# reversing the sides
+# allows the AI to play as player2 by swapping the roles of the players
+def rev(a):
+    b = a.copy()
+    b[a == 1] = 2
+    b[a == 2] = 1
+    return b.copy()
+
 # display game board and let player choose their move
 def update_board():
     print("Current Game Board:")
