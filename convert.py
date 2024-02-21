@@ -245,14 +245,19 @@ replay_memory = ReplayMemory(capacity=10000)
 agent = DQNAgent(dqn, target_dqn, replay_memory)
 
 gamma = 0.99
+eps = 0.2
 copy_period = 50
+<<<<<<< HEAD
 
 N = 1000
+=======
+N = 100
+>>>>>>> 433da9c0c0fad0ef8551e0ddbf1dd1ecd2404a4c
 total_rewards = np.empty(N)
 avg_rewards = []
 
 for n in range(N):
-    eps = 0.1
+    
     total_reward = play_one(env, agent, target_dqn, eps, gamma, copy_period)
     total_rewards[n] = total_reward
 
