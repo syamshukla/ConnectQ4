@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-import tkinter as tk
-from PIL import Image, ImageTk
+
 class Connect4Env:
     def __init__(self):
         self.rows = 6
@@ -11,27 +10,30 @@ class Connect4Env:
         self.board = np.zeros((self.rows, self.cols), dtype=int)
         self.current_player = 1  # 1 for Player 1, -1 for Player 2
 
-    def reset(self):
+    # resets the game to the starting state, board with all 0s
+    def reset(self): 
         self.board = np.zeros((self.rows, self.cols), dtype=int)
         self.current_player = 1
         return self.board.copy()
-
+    # executes a move for player
     def step(self, action):
         for row in range(self.rows - 1, -1, -1):
             if self.board[row, action] == 0:
                 self.board[row, action] = self.current_player
                 break
-
+        # checks for win or loss
         done, winner = self.check_winner()
         if done:
             reward = 1 if winner == 1 else -1
         else:
+            # else draw
             reward = 0
-
+        # toggle player turn
         self.current_player *= -1
 
         return self.board.copy(), reward, done
 
+    # checking for all the win conditions
     def check_winner(self):
         for player in [1, -1]:
             # Check for a win horizontally
@@ -74,11 +76,14 @@ class Connect4Env:
 
         return False, 0
 
+# Deep Q Network
 class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
         self.flatten = nn.Flatten()
+        # first layer with 128 units
         self.dense1 = nn.Linear(6 * 7, 128)
+        # second layer with 7 units
         self.dense2 = nn.Linear(128, 7)
 
     def forward(self, state):
@@ -86,7 +91,9 @@ class DQN(nn.Module):
         x = torch.relu(self.dense1(x))
         return self.dense2(x)
 
-
+#  Deep Q Network Agent
+# want to implement episilon decay method
+# inspo from ->  https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 class DQNAgent:
     def __init__(self, dqn, target_dqn, replay_memory, gamma=0.99, epsilon=0.1, learning_rate=0.001, batch_size=32):
         self.dqn = dqn
@@ -97,6 +104,7 @@ class DQNAgent:
         self.optimizer = optim.Adam(self.dqn.parameters(), lr=learning_rate)
         self.batch_size = batch_size
 
+    # epsilon greedy policy
     def select_action(self, state):
         if np.random.rand() < self.epsilon:
             return np.random.randint(7)
@@ -104,6 +112,8 @@ class DQNAgent:
             q_values = self.dqn(torch.FloatTensor(state).view(1, -1))
             return torch.argmax(q_values).item()
 
+    # updating the network based on a batch of experiences
+    # we have batch size of 32, can try 128 too
     def update_q_network(self, batch):
         states, actions, rewards, next_states, dones = zip(*batch)
 
@@ -111,8 +121,11 @@ class DQNAgent:
         next_states = torch.FloatTensor(np.array(next_states))
 
         q_values = self.dqn(states)
+        # calculating the target q values
         target_q_values = self.target_dqn(next_states)
 
+        # calculates the loss
+        # updating the network using backpropogation
         for i in range(self.batch_size):
             if dones[i]:
                 q_values[i, actions[i]] = rewards[i]
@@ -124,7 +137,7 @@ class DQNAgent:
         loss.backward()
         self.optimizer.step()
 
-
+# single game episode
 def play_one(env, agent, tagent, eps, gamma, copy_period, learn=True):
     env.reset()
 
@@ -197,10 +210,12 @@ class ReplayMemory:
         if len(self.memory) > self.capacity:
             self.memory.pop(0)
 
+    # random sampling of batches for training
     def sample(self, batch_size):
         indices = np.random.choice(len(self.memory), batch_size, replace=False)
         return [self.memory[i] for i in indices]
     
+# display game board and let player choose their move
 def update_board():
     print("Current Game Board:")
     for row in env.board:
@@ -250,6 +265,11 @@ def hello_callback(value):
     update_board()
     print(value)
 
+
+
+# ----------------------------------------------------------------------
+# Console based game and DQN initialization
+# ----------------------------------------------------------------------
 env = Connect4Env()
 dqn = DQN()
 target_dqn = DQN()
@@ -259,7 +279,7 @@ agent = DQNAgent(dqn, target_dqn, replay_memory)
 gamma = 0.99
 copy_period = 50
 
-N = 10
+N = 100
 total_rewards = np.empty(N)
 avg_rewards = []
 
