@@ -247,12 +247,7 @@ agent = DQNAgent(dqn, target_dqn, replay_memory)
 gamma = 0.99
 eps = 0.2
 copy_period = 50
-<<<<<<< HEAD
-
-N = 1000
-=======
 N = 100
->>>>>>> 433da9c0c0fad0ef8551e0ddbf1dd1ecd2404a4c
 total_rewards = np.empty(N)
 avg_rewards = []
 
