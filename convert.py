@@ -191,6 +191,8 @@ def play_one(env, agent, tagent, eps, gamma, copy_period, learn=True):
     return total_reward
 
 
+# reversing the sides
+# allows the AI to play as player2 by swapping the roles of the players
 def rev(a):
     b = a.copy()
     b[a == 1] = 2
@@ -231,45 +233,11 @@ def update_board():
     print("| 1 2 3 4 5 6 7 |")
     print()
 
-def hello_callback(value):
-    global observation, prev_observation
-
-    if env.check_winner()[0] > 0:
-        return
-
-    prev_observation = observation.copy().flatten()
-
-    placed = env.step(1, value)
-    if not placed:
-        return
-
-    prev_observation = observation.copy().flatten()
-    observation = env.board.copy().flatten()
-
-    if env.check_winner()[0] > 0:
-        print("Player 1 wins!")
-        update_board()
-        return
-
-    action = agent.select_action(rev(observation))
-    placed = env.step(2, action)
-
-    prev_observation = observation.copy().flatten()
-    observation = env.board.copy().flatten()
-
-    if env.check_winner()[0] > 0:
-        print("Player 2 wins!")
-        update_board()
-        return
-
-    update_board()
-    print(value)
-
-
 
 # ----------------------------------------------------------------------
 # Console based game and DQN initialization
 # ----------------------------------------------------------------------
+    
 env = Connect4Env()
 dqn = DQN()
 target_dqn = DQN()
