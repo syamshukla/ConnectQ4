@@ -267,15 +267,9 @@ replay_memory = ReplayMemory(capacity=100000)
 agent = DQNAgent(dqn, target_dqn, replay_memory)
 
 gamma = 0.92
-<<<<<<< HEAD
 eps = 0.2
 copy_period = 50
 N =500
-=======
-eps = 0.01
-copy_period = 100
-N =10000
->>>>>>> refs/remotes/origin/main
 total_rewards = np.empty(N)
 avg_rewards = []
 
