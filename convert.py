@@ -1,8 +1,9 @@
+from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-
+from termcolor import colored
 class Connect4Env:
     def __init__(self):
         self.rows = 6
@@ -234,14 +235,14 @@ def update_board():
     for row in env.board:
         print("|", end=" ")
         for cell in row:
-            if cell == 1:  # Assuming 1 represents player 1's token
-                print("X", end=" ")
-            elif cell == -1:  # Assuming 2 represents player 2's token
-                print("O", end=" ")
+            if cell == 1:
+                print(colored("X", "red"), end=" ")
+            elif cell == -1:
+                print(colored("O", "yellow"), end=" ")
             else:
                 print(" ", end=" ")
         print("|")
-    print("| 1 2 3 4 5 6 7 |")
+    print("| " + " ".join([str(i + 1) for i in range(env.cols)]) + " |")
     print()
 
 
@@ -256,9 +257,9 @@ replay_memory = ReplayMemory(capacity=100000)
 agent = DQNAgent(dqn, target_dqn, replay_memory)
 
 gamma = 0.92
-eps = 0.01
+eps = 0.2
 copy_period = 50
-N =100
+N =500
 total_rewards = np.empty(N)
 avg_rewards = []
 
@@ -276,6 +277,24 @@ print("Total wins:", (total_rewards == 1).sum())
 print("Total losses:", (total_rewards == -1).sum())
 print("Total draws:", (total_rewards == 0).sum())
 
+
+def plot_rewards(total_rewards, avg_rewards):
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(total_rewards)
+    plt.title('Total Rewards per Episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Total Reward')
+
+    plt.subplot(1, 2, 2)
+    plt.plot(avg_rewards)
+    plt.title('Average Rewards (last 10 episodes)')
+    plt.xlabel('Episode')
+    plt.ylabel('Average Reward')
+    
+    plt.tight_layout()
+    plt.show()
+    
 # Console-based gameplay
 # Console-based gameplay against the trained agent
 while True:
@@ -310,3 +329,4 @@ while True:
     if play_again.lower() != 'yes':
         print("Game over!")
         break
+plot_rewards(total_rewards, avg_rewards)
