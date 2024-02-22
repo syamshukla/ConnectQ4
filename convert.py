@@ -96,22 +96,28 @@ class DQN(nn.Module):
 # want to implement episilon decay method
 # inspo from ->  https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 class DQNAgent:
-    def __init__(self, dqn, target_dqn, replay_memory, gamma=0.99, epsilon=0.1, learning_rate=0.001, batch_size=32):
+    def __init__(self, dqn, target_dqn, replay_memory, gamma=0.99, epsilon=0.1, epsilon_decay=0.995, epsilon_min=0.01, learning_rate=0.1, batch_size=32):
         self.dqn = dqn
         self.target_dqn = target_dqn
         self.replay_memory = replay_memory
         self.gamma = gamma
         self.epsilon = epsilon
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
         self.optimizer = optim.Adam(self.dqn.parameters(), lr=learning_rate)
         self.batch_size = batch_size
 
-    # epsilon greedy policy
     def select_action(self, state):
         if np.random.rand() < self.epsilon:
             return np.random.randint(7)
         else:
             q_values = self.dqn(torch.FloatTensor(state).view(1, -1))
             return torch.argmax(q_values).item()
+    
+    # Call this method at the end of each episode
+    def update_epsilon(self):
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
 
     # updating the network based on a batch of experiences
     # we have batch size of 32, can try 128 too
@@ -137,6 +143,10 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+    
+    def update_target_network(self):
+        """Copies the weights from the policy network to the target network."""
+        self.target_dqn.load_state_dict(self.dqn.state_dict())
 
 # single game episode
 def play_one(env, agent, opponent, eps, gamma, copy_period, learn=True):
@@ -224,10 +234,10 @@ class ReplayMemory:
 # reversing the sides
 # allows the AI to play as player2 by swapping the roles of the players
 def rev(a):
-    b = a.copy()
-    b[a == 1] = 2
-    b[a == 2] = 1
-    return b.copy()
+    b = np.where(a == 1, -1, a)  # Swap 1 with -1
+    b = np.where(a == -1, 1, b)  # Swap -1 with 1
+    return b
+
 
 # display game board and let player choose their move
 def update_board():
@@ -257,21 +267,29 @@ replay_memory = ReplayMemory(capacity=100000)
 agent = DQNAgent(dqn, target_dqn, replay_memory)
 
 gamma = 0.92
+<<<<<<< HEAD
 eps = 0.2
 copy_period = 50
 N =500
+=======
+eps = 0.01
+copy_period = 100
+N =10000
+>>>>>>> refs/remotes/origin/main
 total_rewards = np.empty(N)
 avg_rewards = []
 
 for n in range(N):
-    
-    total_reward = play_one(env, agent, target_dqn, eps, gamma, copy_period)
+    total_reward = play_one(env, agent, 'random', eps, gamma, copy_period)
     total_rewards[n] = total_reward
 
-    if n % 10 == 0:
-        avg_reward = total_rewards[max(0, n - 10):(n + 1)].mean()
+
+    if n % copy_period == 0:
+            # Update epsilon
+        agent.update_epsilon()
+        avg_reward = total_rewards[max(0, n - 100):(n + 1)].mean()
         avg_rewards.append(avg_reward)
-        print("Episode:", n, "Total Reward:", total_reward, "Average Reward (last 10):", avg_reward)
+        print("Episode:", n, "Total Reward:", total_reward, "Average Reward (last 100):", avg_reward)
 # show the total wins and losses:
 print("Total wins:", (total_rewards == 1).sum())
 print("Total losses:", (total_rewards == -1).sum())
