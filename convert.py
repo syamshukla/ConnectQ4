@@ -148,6 +148,121 @@ class DQNAgent:
         """Copies the weights from the policy network to the target network."""
         self.target_dqn.load_state_dict(self.dqn.state_dict())
 
+
+
+class MCTSAgent:
+    def __init__(self, env):
+        self.env = env
+        self.C = 1  # Exploration parameter for UCT
+
+    class Node:
+        def __init__(self, parent, action, state):
+            self.parent = parent
+            self.action = action
+            self.state = state
+            self.wins = 0
+            self.visits = 0
+            self.children = []
+
+    def select_action(self, state):
+        root = self.create_root_node(state)
+        for _ in range(self.num_simulations):
+            self.simulate(root)
+        return self.get_most_visited_action(root)
+
+    def create_root_node(self, state):
+        return self.Node(None, None, state)
+
+    def simulate(self, node):
+        state = node.state.copy()
+        done = False
+        while not done:
+            # Select action based on UCT
+            action = self.select_uct_action(node)
+            next_state, reward, done = self.env.step(action)
+            # Create new node if not visited before
+            if not self.is_fully_expanded(node, action):
+                self.expand_node(node, action, next_state)
+            # Update visit counts and propagate reward
+            self.backpropagate(node, reward)
+
+    def select_uct_action(self, node):
+        best_uct = float('-inf')
+        best_action = None
+        for child in node.children:
+            if child.visits > 0:
+                uct = child.wins / child.visits + self.C * np.sqrt(np.log(node.visits) / child.visits)
+                if uct > best_uct:
+                    best_uct = uct
+                    best_action = child.action
+        return best_action
+
+    def expand_node(self, node, action, state):
+        new_node = self.Node(node, action, state)
+        node.children.append(new_node)
+
+    def backpropagate(self, node, reward):
+        while node is not None:
+            node.wins += reward
+            node.visits += 1
+            node = node.parent
+
+    def get_most_visited_action(self, node):
+        visit_counts = [child.visits for child in node.children]
+        return np.argmax(visit_counts)
+
+    def is_fully_expanded(self, node, action):
+        for child in node.children:
+            if child.action == action:
+                return True
+        return False
+
+    # Adjust this parameter for number of simulations per training episode
+    num_simulations = 100
+
+
+class ReplayMemory:
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.memory = []
+
+    def __len__(self):
+        return len(self.memory)
+
+    def append(self, experience):
+        self.memory.append(experience)
+        if len(self.memory) > self.capacity:
+            self.memory.pop(0)
+
+    # random sampling of batches for training
+    def sample(self, batch_size):
+        indices = np.random.choice(len(self.memory), batch_size, replace=False)
+        return [self.memory[i] for i in indices]
+
+
+# reversing the sides
+# allows the AI to play as player2 by swapping the roles of the players
+def rev(a):
+    b = np.where(a == 1, -1, a)  # Swap 1 with -1
+    b = np.where(a == -1, 1, b)  # Swap -1 with 1
+    return b
+
+
+# display game board and let player choose their move
+def update_board():
+    print("Current Game Board:")
+    for row in env.board:
+        print("|", end=" ")
+        for cell in row:
+            if cell == 1:
+                print(colored("X", "red"), end=" ")
+            elif cell == -1:
+                print(colored("O", "yellow"), end=" ")
+            else:
+                print(" ", end=" ")
+        print("|")
+    print("| " + " ".join([str(i + 1) for i in range(env.cols)]) + " |")
+    print()
 # single game episode
 def play_one(env, agent, opponent, eps, gamma, copy_period, learn=True):
         env.reset()
@@ -212,49 +327,6 @@ def play_one(env, agent, opponent, eps, gamma, copy_period, learn=True):
         return total_reward
 
 
-class ReplayMemory:
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.memory = []
-
-    def __len__(self):
-        return len(self.memory)
-
-    def append(self, experience):
-        self.memory.append(experience)
-        if len(self.memory) > self.capacity:
-            self.memory.pop(0)
-
-    # random sampling of batches for training
-    def sample(self, batch_size):
-        indices = np.random.choice(len(self.memory), batch_size, replace=False)
-        return [self.memory[i] for i in indices]
-    
-
-# reversing the sides
-# allows the AI to play as player2 by swapping the roles of the players
-def rev(a):
-    b = np.where(a == 1, -1, a)  # Swap 1 with -1
-    b = np.where(a == -1, 1, b)  # Swap -1 with 1
-    return b
-
-
-# display game board and let player choose their move
-def update_board():
-    print("Current Game Board:")
-    for row in env.board:
-        print("|", end=" ")
-        for cell in row:
-            if cell == 1:
-                print(colored("X", "red"), end=" ")
-            elif cell == -1:
-                print(colored("O", "yellow"), end=" ")
-            else:
-                print(" ", end=" ")
-        print("|")
-    print("| " + " ".join([str(i + 1) for i in range(env.cols)]) + " |")
-    print()
-
 
 # ----------------------------------------------------------------------
 # Console based game and DQN initialization
@@ -269,21 +341,26 @@ agent = DQNAgent(dqn, target_dqn, replay_memory)
 gamma = 0.92
 eps = 0.2
 copy_period = 50
-N =500
+N = 1000
 total_rewards = np.empty(N)
 avg_rewards = []
 
+mcts_agent = MCTSAgent(env)  # Move initialization outside the loop
+
 for n in range(N):
-    total_reward = play_one(env, agent, 'random', eps, gamma, copy_period)
+    total_reward = play_one(env, agent, mcts_agent, eps, gamma, copy_period)
     total_rewards[n] = total_reward
 
-
     if n % copy_period == 0:
-            # Update epsilon
+        # Update epsilon
         agent.update_epsilon()
+        # Update target network
+        agent.update_target_network()
+        
         avg_reward = total_rewards[max(0, n - 100):(n + 1)].mean()
         avg_rewards.append(avg_reward)
         print("Episode:", n, "Total Reward:", total_reward, "Average Reward (last 100):", avg_reward)
+
 # show the total wins and losses:
 print("Total wins:", (total_rewards == 1).sum())
 print("Total losses:", (total_rewards == -1).sum())
