@@ -98,8 +98,13 @@ class Connect4Env:
             else:
                 action = agent2.act(self.board)
             _, reward, done, _ = self.step(action)
-            agent1.update_memory(self.board, action, reward, self.board, done)
-            agent2.update_memory(self.board, action, -reward, self.board, done)
+            if hasattr(agent1, 'update_memory'):
+                agent1.update_memory(self.board, action, reward, self.board, done)
+            if hasattr(agent2, 'update_memory'):
+                agent2.update_memory(self.board, action, -reward, self.board, done)
+            
+            # agent1.update_memory(self.board, action, reward, self.board, done)
+            # agent2.update_memory(self.board, action, -reward, self.board, done)
             self.episode_reward += reward
             self.number_of_steps_in_episode += 1
         average_episode_reward = self.episode_reward / self.number_of_steps_in_episode
@@ -107,6 +112,20 @@ class Connect4Env:
     
     def get_board_dimensions(self):
         return self.board.shape
+
+class RandomAgent:
+    def __init__(self, env):
+        self.env = env
+
+    def act(self, state):
+        valid_actions = self.get_valid_actions(state)
+        if not valid_actions:
+            return -1  # No valid actions available
+        return np.random.choice(valid_actions)
+
+    def get_valid_actions(self, state):
+        return [col for col in range(self.env.get_board_dimensions()[1]) if state[0, col] == 0]
+
 class DQN:
     def __init__(self, input_dim, output_dim, lr, gamma):
         self.input_dim = input_dim
@@ -204,14 +223,29 @@ class ReplayBuffer:
 env = Connect4Env()
 agent1 = DQN(42, 7, 0.001, 0.99)
 agent2 = DQN(42, 7, 0.001, 0.99)
+rand_agent = RandomAgent(env)
 episode_rewards = []
 training_losses = []
-for i in range(1000):
+for i in range(5000):
     winner, average_episode_reward = env.play(agent1, agent2)
     agent1.train()
     agent2.train()
 
     # Calculate average episode reward (using data from env.play())
+    episode_rewards.append(average_episode_reward)
+
+    # Calculate loss if applicable (assuming loss is a tensor)
+    loss = agent1.train()  # Assuming training returns the loss
+    if loss:  # Check if loss exists (optional for loss plotting)
+        training_losses.append(loss.item())
+
+    if i % 100 == 0:
+        print(f'Game {i}, winner: {winner}')
+
+for i in range(5000):
+    winner, average_episode_reward = env.play(agent1, rand_agent)
+    agent1.train()
+
     episode_rewards.append(average_episode_reward)
 
     # Calculate loss if applicable (assuming loss is a tensor)
@@ -266,7 +300,7 @@ if training_losses:
     plt.plot(training_losses, label='Training Loss')
 
 plt.xlabel('Training Episodes')
-plt.ylabel('Reward/Loss')
+plt.ylabel('Reward/Loss') 
 plt.title('DQN Training Results (Connect4)')
 plt.legend()
 plt.grid(True)
