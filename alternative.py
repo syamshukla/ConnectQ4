@@ -17,6 +17,7 @@ class Connect4Env:
         self.winner = None
         self.episode_reward = 0
         self.number_of_steps_in_episode = 0  # Track
+
     def reset(self):
         self.board = np.zeros((6, 7))
         self.player = 1
@@ -33,16 +34,47 @@ class Connect4Env:
                 self.board[i, action] = self.player
                 break
 
+        intermediate_reward = 0
+
+        # Check for three in a row for current player (after placing the piece)
+        for i in range(6):
+            for j in range(4):
+                if (self.board[i, j] == self.player and
+                        self.board[i, j + 1] == self.player and
+                        self.board[i, j + 2] == self.player):
+                    intermediate_reward += 0.1  # Reward for three in a row
+
+        # Check for blocking opponent's three in a row (after placing the piece)
+        for i in range(6):
+            for j in range(4):
+                if (self.board[i, j] == -self.player and
+                        self.board[i, j + 1] == -self.player and
+                        self.board[i, j + 2] == -self.player):
+                    intermediate_reward += 0.1  # Reward for blocking opponent's three
+
+        # Check for center placement (after placing the piece)
+        if action in [3, 4]:
+            intermediate_reward += 0.05  # Reward for placing in center column
+
+        # Check for opponent's two in a row (after placing the piece)
+        for i in range(6):
+            for j in range(3):
+                if (self.board[i, j] == -self.player and
+                        self.board[i, j + 1] == -self.player):
+                    intermediate_reward += 0.02  # Reward for blocking opponent's two
+
+        # Update total reward with intermediate reward
+        reward = intermediate_reward
+
         if self._is_winner():
             self.done = True
             self.winner = self.player
-            reward = 1
+            reward += 1  # Final win reward (add to intermediate reward)
         elif self._is_draw():
             self.done = True
-            reward = 0
-        else:
-            self.player = -1 if self.player == 1 else 1
-            reward = 0
+            reward += 0  # No additional reward for draw
+
+        self.player = -1 if self.player == 1 else 1
 
         return self.board, reward, self.done, self.winner
 
@@ -226,7 +258,7 @@ agent2 = DQN(42, 7, 0.001, 0.99)
 rand_agent = RandomAgent(env)
 episode_rewards = []
 training_losses = []
-for i in range(5000):
+for i in range(10000):
     winner, average_episode_reward = env.play(agent1, agent2)
     agent1.train()
     agent2.train()
@@ -242,7 +274,7 @@ for i in range(5000):
     if i % 100 == 0:
         print(f'Game {i}, winner: {winner}')
 
-for i in range(5000):
+for i in range(2000):
     winner, average_episode_reward = env.play(agent1, rand_agent)
     agent1.train()
 
