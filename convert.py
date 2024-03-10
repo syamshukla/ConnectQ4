@@ -96,7 +96,7 @@ class DQN(nn.Module):
 # want to implement episilon decay method
 # inspo from ->  https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 class DQNAgent:
-    def __init__(self, dqn, target_dqn, replay_memory, gamma=0.99, epsilon=0.1, epsilon_decay=0.995, epsilon_min=0.01, learning_rate=0.1, batch_size=32):
+    def __init__(self, dqn, target_dqn, replay_memory, gamma=0.95, epsilon=0.1, epsilon_decay=0.995, epsilon_min=0.01, learning_rate=0.01, batch_size=64):
         self.dqn = dqn
         self.target_dqn = target_dqn
         self.replay_memory = replay_memory
@@ -335,18 +335,18 @@ def play_one(env, agent, opponent, eps, gamma, copy_period, learn=True):
 env = Connect4Env()
 dqn = DQN()
 target_dqn = DQN()
-replay_memory = ReplayMemory(capacity=100000)
+replay_memory = ReplayMemory(capacity=10000)
 agent = DQNAgent(dqn, target_dqn, replay_memory)
 
 gamma = 0.92
-eps = 0.2
+eps = 0.9
 copy_period = 50
-N = 500
+N = 1000
 total_rewards = np.empty(N)
 avg_rewards = []
 
 opponent = "random"
-switch = 200
+switch = 300
 
 mcts_agent = MCTSAgent(env)  # Move initialization outside the loop
 
