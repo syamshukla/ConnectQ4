@@ -341,14 +341,17 @@ agent = DQNAgent(dqn, target_dqn, replay_memory)
 gamma = 0.92
 eps = 0.2
 copy_period = 50
-N = 1000
+N = 500
 total_rewards = np.empty(N)
 avg_rewards = []
+
+opponent = "random"
+switch = 200
 
 mcts_agent = MCTSAgent(env)  # Move initialization outside the loop
 
 for n in range(N):
-    total_reward = play_one(env, agent, mcts_agent, eps, gamma, copy_period)
+    total_reward = play_one(env, agent, opponent, eps, gamma, copy_period)
     total_rewards[n] = total_reward
 
     if n % copy_period == 0:
@@ -357,9 +360,15 @@ for n in range(N):
         # Update target network
         agent.update_target_network()
         
-        avg_reward = total_rewards[max(0, n - 100):(n + 1)].mean()
+        avg_reward = total_rewards[max(0, n - 50):(n + 1)].mean()
         avg_rewards.append(avg_reward)
-        print("Episode:", n, "Total Reward:", total_reward, "Average Reward (last 100):", avg_reward)
+        print("Episode:", n, "Total Reward:", total_reward, "Average Reward (last 50):", avg_reward)
+    
+        # Switch opponent to MCTS agent after a certain number of episodes
+    if n == switch:
+        opponent = "mcts_agent"
+        print("Switching opponent to MCTS agent")
+
 
 # show the total wins and losses:
 print("Total wins:", (total_rewards == 1).sum())
