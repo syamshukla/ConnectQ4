@@ -165,7 +165,7 @@ class DQN:
         self.lr = lr
         self.gamma = gamma
         self.memory = []
-        self.replay_buffer = ReplayBuffer(max_size=1000)  # Experience Replay Buffer
+        self.replay_buffer = ReplayBuffer(max_size=2000)  # Experience Replay Buffer
         self.model = torch.nn.Sequential(
             torch.nn.Linear(input_dim, 128),
             torch.nn.ReLU(),
@@ -177,7 +177,7 @@ class DQN:
         self.loss_fn = torch.nn.MSELoss()
         
     def act(self, state):
-        if np.random.rand() < 0.1:
+        if np.random.rand() < 0.7:
             return np.random.choice(7)
 
         # Get the number of rows and columns from the environment (assuming env provides these)
@@ -202,7 +202,7 @@ class DQN:
         self.memory.append((state.flatten(), action, reward, next_state.flatten(), done))
 
     def train(self):
-        batch_size = 32  # Hyperparameter: batch_size
+        batch_size = 64  # Hyperparameter: batch_size
         if len(self.replay_buffer) < batch_size:  # Hyperparameter: batch_size
             return
 
@@ -250,15 +250,18 @@ class ReplayBuffer:
         return random.sample(self.buffer, batch_size)
     def __len__(self):
         return len(self.buffer)
-    
+
 
 env = Connect4Env()
-agent1 = DQN(42, 7, 0.001, 0.99)
-agent2 = DQN(42, 7, 0.001, 0.99)
+agent1 = DQN(42, 7, 1, 0.01)
+agent2 = DQN(42, 7, 1, 0.)
 rand_agent = RandomAgent(env)
 episode_rewards = []
 training_losses = []
-for i in range(10000):
+win_count_agent1 = 0
+win_count_agent2 = 0
+games_to_play = 3000
+for i in range(games_to_play):
     winner, average_episode_reward = env.play(agent1, agent2)
     agent1.train()
     agent2.train()
@@ -271,9 +274,18 @@ for i in range(10000):
     if loss:  # Check if loss exists (optional for loss plotting)
         training_losses.append(loss.item())
 
+    if winner == 1:
+        win_count_agent1 += 1
+    elif winner == -1:
+        win_count_agent2 += 1
+
     if i % 100 == 0:
         print(f'Game {i}, winner: {winner}')
 
+print(f"\nAgent1 win rate: {win_count_agent1 / games_to_play * 100:.2f}%")
+print(f"Agent2 win rate: {win_count_agent2 / games_to_play * 100:.2f}%")
+
+# Continue with playing against random agent
 for i in range(2000):
     winner, average_episode_reward = env.play(agent1, rand_agent)
     agent1.train()
@@ -287,6 +299,19 @@ for i in range(2000):
 
     if i % 100 == 0:
         print(f'Game {i}, winner: {winner}')
+
+# Calculate win rate against random agent
+win_count_agent1_vs_rand = 0
+games_vs_rand = 2000
+
+for i in range(games_vs_rand):
+    winner, _ = env.play(agent1, rand_agent)
+    agent1.train()
+
+    if winner == 1:
+        win_count_agent1_vs_rand += 1
+
+print(f"\nAgent1 win rate against random agent: {win_count_agent1_vs_rand / games_vs_rand * 100:.2f}%")
 
 # Play against the trained model
 while True:
@@ -321,19 +346,26 @@ while True:
         print("Game over!")
         break
 
-# After training, plot the results (using matplotlib)
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(12, 8))
 
 # Plot Average Episode Reward
-plt.plot(episode_rewards, label='Average Episode Reward')
-
-# Plot Loss (optional)
-if training_losses:
-    plt.plot(training_losses, label='Training Loss')
-
+plt.subplot(2, 1, 1)
+plt.plot(episode_rewards, label='Average Episode Reward', color='blue')
 plt.xlabel('Training Episodes')
-plt.ylabel('Reward/Loss') 
-plt.title('DQN Training Results (Connect4)')
+plt.ylabel('Average Episode Reward')
+plt.title('Average Episode Reward Over Training')
 plt.legend()
 plt.grid(True)
+
+# Plot Training Loss (optional)
+if training_losses:
+    plt.subplot(2, 1, 2)
+    plt.plot(training_losses, label='Training Loss', color='red')
+    plt.xlabel('Training Episodes')
+    plt.ylabel('Training Loss')
+    plt.title('Training Loss Over Training')
+    plt.legend()
+    plt.grid(True)
+
+plt.tight_layout()
 plt.show()
