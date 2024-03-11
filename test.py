@@ -275,6 +275,8 @@ agent2 = RandomAgent(env)  # Initially play against a random agent
 episode_rewards = []
 average_episode_rewards = []
 
+win_count = 0
+
 for i in range(num_episodes):
     winner, episode_reward = env.play(agent1, RandomAgent(env))
     episode_rewards.append(episode_reward)
@@ -284,9 +286,14 @@ for i in range(num_episodes):
     if len(agent1.replay_buffer.store) > 1000:  # Minimum experience for training
         agent1.train(64)  # Train with a batch size of 64
 
+    # Calculate and print win rate for Agent 1
+    if winner == 1:  # Check if Agent 1 won
+        win_count += 1
+    win_rate = win_count / (i + 1) * 100  # Calculate win rate as percentage
+
     # Print progress and plot (optional)
     if i % 100 == 0:
-        print(f"Episode: {i}, Winner: {winner}, Average Reward: {average_episode_rewards[-1]:.2f}")
+        print(f"Episode: {i}, Winner: {winner}, Average Reward: {average_episode_rewards[-1]:.2f}, Win Rate: {win_rate:.2f}%")
         # Plot learning curve using matplotlib (optional)
 
 while True:
