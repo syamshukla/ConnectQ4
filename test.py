@@ -268,10 +268,11 @@ input_dim = env.get_board_dimensions()[0] * env.get_board_dimensions()[1]  # Fla
 output_dim = env.get_board_dimensions()[1]  # Number of possible actions (columns)
 learning_rate = 0.001
 gamma = 0.99  # Discount factor
-num_episodes = 1000  # Number of training episodes
+num_episodes = 2000  # Number of training episodes
 input_dim = env.get_board_dimensions()[0] * env.get_board_dimensions()[1]  # Flatten board for input
 agent1 = DQN(input_dim, output_dim, learning_rate, gamma)
-agent2 = RandomAgent(env)  # Initially play against a random agent
+agent2 = RandomAgent(env)  # Initially play against a random agent\
+agent3 = DQN(input_dim, output_dim, learning_rate, gamma)
 episode_rewards = []
 average_episode_rewards = []
 
@@ -289,16 +290,15 @@ for i in range(num_episodes):
     # Calculate and print win rate for Agent 1
     if winner == 1:  # Check if Agent 1 won
         win_count += 1
-    win_rate = win_count / (i + 1) * 100  # Calculate win rate as percentage
-
+    win_rate = win_count / (i + 1) * 100
     # Print progress and plot (optional)
-    if i % 100 == 0:
+    if i % 1 == 0:
+        
         print(f"Episode: {i}, Winner: {winner}, Average Reward: {average_episode_rewards[-1]:.2f}, Win Rate: {win_rate:.2f}%")
         # Plot learning curve using matplotlib (optional)
-
+print(f"Win rate: {win_count / num_episodes * 100:.2f}%")
 while True:
     env.reset()  # Reset the game board
-
     while not env.done:
         # Player 1's move
         env.render()
@@ -327,5 +327,12 @@ while True:
     play_again = input("Play again? (y/n): ")
     if play_again.lower() != 'y':
         break
+
+#plot the entropy graph
+plt.plot(average_episode_rewards)
+plt.xlabel('Episode')
+plt.ylabel('Average Reward (100 Episodes)')
+plt.title('Connect4 DQN Training')
+plt.show()
 
         
