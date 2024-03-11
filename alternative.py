@@ -79,32 +79,43 @@ class Connect4Env:
         return self.board, reward, self.done, self.winner
 
     def _is_winner(self):
+        currentPlayer = self.player
+
+        # Check diagonals
+        for i in range(3, 6):
+            for j in range(4):
+                # Check positive diagonal
+                if (self.board[i, j] == currentPlayer and
+                    self.board[i - 1, j + 1] == currentPlayer and
+                    self.board[i - 2, j + 2] == currentPlayer and
+                    self.board[i - 3, j + 3] == currentPlayer):
+                    return True
+                # Check negative diagonal
+                if (self.board[i, j + 3] == currentPlayer and
+                    self.board[i - 1, j + 2] == currentPlayer and
+                    self.board[i - 2, j + 1] == currentPlayer and
+                    self.board[i - 3, j] == currentPlayer):
+                    return True
+
         # Check horizontal
         for i in range(6):
             for j in range(4):
-                if self.board[i, j] == self.player and self.board[i, j + 1] == self.player and self.board[i, j + 2] == self.player and self.board[i, j + 3] == self.player:
+                if (self.board[i, j] == currentPlayer and
+                    self.board[i, j + 1] == currentPlayer and
+                    self.board[i, j + 2] == currentPlayer and
+                    self.board[i, j + 3] == currentPlayer):
                     return True
 
         # Check vertical
         for i in range(3):
             for j in range(7):
-                if self.board[i, j] == self.player and self.board[i + 1, j] == self.player and self.board[i + 2, j] == self.player and self.board[i + 3, j] == self.player:
+                if (self.board[i, j] == currentPlayer and
+                    self.board[i + 1, j] == currentPlayer and
+                    self.board[i + 2, j] == currentPlayer and
+                    self.board[i + 3, j] == currentPlayer):
                     return True
 
-        # Check positive diagonal
-        for i in range(3):
-            for j in range(4):
-                if self.board[i, j] == self.player and self.board[i + 1, j + 1] == self.player and self.board[i + 2, j + 2] == self.player and self.board[i + 3, j + 3] == self.player:
-                    return True
-
-        # Check negative diagonal
-        for i in range(3, 6):
-            for j in range(4):
-                if self.board[i, j] == self.player and self.board[i - 1, j + 1] == self.player and self.board[i - 2, j + 2] == self.player and self.board[i - 3, j + 3] == self.player:
-                    return True
-                
         return False
-    
     def _is_draw(self):
         return np.all(self.board != 0)
 
@@ -159,7 +170,7 @@ class RandomAgent:
         return [col for col in range(self.env.get_board_dimensions()[1]) if state[0, col] == 0]
 
 class DQN:
-    def __init__(self, input_dim, output_dim, lr, gamma, epsilon=0.7, epsilon_decay=0.995):
+    def __init__(self, input_dim, output_dim, lr, gamma, epsilon=0.3, epsilon_decay=0.995):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.lr = lr
@@ -206,7 +217,6 @@ class DQN:
 
         if not valid_actions:
             return -1  # No valid actions, return a special value
-
         # Choose action with highest Q-value among valid actions
         with torch.no_grad():
             state_tensor = torch.tensor(flat_state, dtype=torch.float32).unsqueeze(0)
@@ -274,16 +284,16 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 env = Connect4Env()
-agent1 = DQN(42, 7, 1, 0.01)
-agent2 = DQN(42, 7, 1, 0.)
+agent1 = DQN(42, 7, 1, 0.001)
+agent2 = DQN(42, 7, 1, 0.001)
 rand_agent = RandomAgent(env)
 episode_rewards = []
 training_losses = []
 win_count_agent1 = 0
 win_count_agent2 = 0
-games_to_play = 3000
+games_to_play = 1000
 for i in range(games_to_play):
-    winner, average_episode_reward = env.play(agent1, agent2)
+    winner, average_episode_reward = env.play(agent1, rand_agent)
     agent1.train()
     agent2.train()
 
@@ -345,11 +355,18 @@ while True:
         continue
 
     while not env.done:
-        if env.player == user_player:
-            action = int(input("Your move: ")) - 1
-        else:
-            # Agent's move
-            action = agent1.act(env.board.flatten())
+        if user_player == 1:
+            if env.player == user_player:
+                action = int(input("Your move: ")) - 1
+            else:
+                # Agent's move
+                action = agent1.act(env.board.flatten())
+        elif user_player == 2:
+            if env.player == user_player:
+                # Agent's move when it's player 2's turn
+                action = agent1.act(env.board.flatten())
+            else:
+                action = int(input("Your move: ")) - 1
 
         _, _, env.done, _ = env.step(action)
         env.render()
@@ -366,6 +383,8 @@ while True:
     if play_again.lower() != 'yes':
         print("Game over!")
         break
+
+  
 
 plt.figure(figsize=(12, 8))
 
