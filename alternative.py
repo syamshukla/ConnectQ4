@@ -159,13 +159,14 @@ class RandomAgent:
         return [col for col in range(self.env.get_board_dimensions()[1]) if state[0, col] == 0]
 
 class DQN:
-    def __init__(self, input_dim, output_dim, lr, gamma):
+    def __init__(self, input_dim, output_dim, lr, gamma, epsilon=0.7, epsilon_decay=0.995):
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.lr = lr
         self.gamma = gamma
-        self.memory = []
-        self.replay_buffer = ReplayBuffer(max_size=2000)  # Experience Replay Buffer
+        self.epsilon = epsilon  # Initialize epsilon here
+        self.epsilon_decay = epsilon_decay
+        self.replay_buffer = ReplayBuffer(max_size=10000)  # Experience Replay Buffer
         self.model = torch.nn.Sequential(
             torch.nn.Linear(input_dim, 128),
             torch.nn.ReLU(),
@@ -173,14 +174,25 @@ class DQN:
             torch.nn.ReLU(),
             torch.nn.Linear(128, output_dim)
         )
+        self.target_model = torch.nn.Sequential(  # Add target network for DQN stability
+            torch.nn.Linear(input_dim, 128),
+            torch.nn.ReLU(),
+            torch.nn.Linear(128, 128),
+            torch.nn.ReLU(),
+            torch.nn.Linear(128, output_dim)
+        )
+        self.update_target_weights(soft_tau=1.0)  # Update target network weights initially
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.loss_fn = torch.nn.MSELoss()
-        
+
     def act(self, state):
-        if np.random.rand() < 0.7:
+        # Epsilon-greedy exploration with decay
+        if np.random.rand() < self.epsilon:
             return np.random.choice(7)
 
-        # Get the number of rows and columns from the environment (assuming env provides these)
+        self.epsilon *= self.epsilon_decay  # Update epsilon for decay
+
+        # Get the number of rows and columns from the environment
         num_rows, num_cols = env.get_board_dimensions()  # Replace with your method to get dimensions
 
         # Flatten the state represents the board
@@ -195,15 +207,19 @@ class DQN:
         if not valid_actions:
             return -1  # No valid actions, return a special value
 
-        action = np.random.choice(valid_actions)
+        # Choose action with highest Q-value among valid actions
+        with torch.no_grad():
+            state_tensor = torch.tensor(flat_state, dtype=torch.float32).unsqueeze(0)
+            q_values = self.model(state_tensor)
+        action = torch.argmax(q_values[0]).item()
         return action
 
     def update_memory(self, state, action, reward, next_state, done):
-        self.memory.append((state.flatten(), action, reward, next_state.flatten(), done))
+        self.replay_buffer.push(state.flatten(), action, reward, next_state.flatten(), done)
 
     def train(self):
         batch_size = 64  # Hyperparameter: batch_size
-        if len(self.replay_buffer) < batch_size:  # Hyperparameter: batch_size
+        if len(self.replay_buffer) < batch_size:
             return
 
         experiences = self.replay_buffer.sample(batch_size)
@@ -215,9 +231,9 @@ class DQN:
         dones = torch.tensor(dones, dtype=torch.float32)
 
         q_values = self.model(states)
-        
-        # Use target network for next state Q-values
-        with torch.no_grad():  # Detach gradients for target network
+
+        # Use target network for next state Q-values (Double DQN)
+        with torch.no_grad():
             next_q_values = self.target_model(next_states)
         next_q_values[dones == 1] = 0
 
@@ -229,8 +245,15 @@ class DQN:
         loss.backward()
         self.optimizer.step()
 
-        # Update target network weights slowly
-        self.update_target_weights()  # Hyperparameter: update frequency
+        # Update target network weights slowly (soft update for DQN stability)
+        self.update_target_weights(soft_tau=1.0)  # Update after every training step (can be adjusted)
+
+    def update_target_weights(self, soft_tau=1.0):
+        """Soft update model weights to target network weights."""
+        for target_param, local_param in zip(self.target_model.parameters(), self.model.parameters()):
+            target_param.data.copy_(soft_tau * local_param.data + (1.0 - soft_tau) * target_param.data)
+
+# ReplayBuffer class (same as before)
 class ReplayBuffer:
     def __init__(self, max_size):
         self.max_size = max_size
@@ -250,8 +273,6 @@ class ReplayBuffer:
         return random.sample(self.buffer, batch_size)
     def __len__(self):
         return len(self.buffer)
-
-
 env = Connect4Env()
 agent1 = DQN(42, 7, 1, 0.01)
 agent2 = DQN(42, 7, 1, 0.)
