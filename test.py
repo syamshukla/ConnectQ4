@@ -121,33 +121,30 @@ class Connect4Env:
 
     def play(self, agent1, agent2):
         self.reset()
-        self.episode_reward = 0
         while not self.done:
             flattened_board = self.board.flatten()
             if self.player == 1:
-                action = agent1.act(flattened_board)  # Modify this line
+                action = agent1.act(flattened_board)
             else:
-                action = agent2.act(flattened_board)  # And this line if necessary
-            # Validate action before applying (prevents agent errors)
+                action = agent2.act(flattened_board)
             if self._is_valid_action(action):
                 _, reward, done, _ = self.step(action)
-                if hasattr(agent1, 'update_memory'):
-                    agent1.update_memory(self.board.flatten(), action, reward, self.board.flatten(), done)
-                if hasattr(agent2, 'update_memory'):
-                    agent2.update_memory(self.board.flatten(), action, -reward, self.board.flatten(), done)
             else:
-                # Handle invalid action from the agent (e.g., penalty or re-selection)
-                print(f"Invalid action: {action}. Agent {self.player} loses turn.")
-                reward = -0.1  # Penalty for invalid action
-                done = True  # End agent's turn due to invalid move
-                self.player = -1 if self.player == 1 else 1
+                # Only apply penalties for invalid actions during training
                 if hasattr(agent1, 'update_memory'):
-                    agent1.update_memory(self.board.flatten(), action, reward, self.board.flatten(), done)
-                if hasattr(agent2, 'update_memory'):
-                    agent2.update_memory(self.board.flatten(), action, reward, self.board.flatten(), done)
-            self.episode_reward += reward
-            self.number_of_steps_in_episode += 1
-        average_episode_reward = self.episode_reward / self.number_of_steps_in_episode
+                    reward = -0.1  # Penalty for invalid action
+                    done = True  # End agent's turn due to invalid move
+                else:
+                    print(f"Invalid action: {action}. Player {self.player} loses turn.")
+            self.player = -1 if self.player == 1 else 1
+            if self.done:
+                break  # Exit loop if game is over
+            if hasattr(agent1, 'update_memory'):
+                agent1.update_memory(self.board.flatten(), action, reward, self.board.flatten(), done)
+                agent2.update_memory(self.board.flatten(), action, -reward, self.board.flatten(), done)
+        self.episode_reward = reward
+        self.number_of_steps_in_episode = 1  # Count only valid moves
+        average_episode_reward = self.episode_reward  # No need for averaging
         return self.winner, average_episode_reward
 
     def get_board_dimensions(self):
@@ -170,6 +167,9 @@ class RandomAgent:
 
     def get_valid_actions(self, state):
         return [col for col in range(self.env.get_board_dimensions()[1]) if state[0, col] == 0]
+    def update_memory(self, state, action, reward, next_state, done):
+        pass
+
 
 class DQN:
     def __init__(self, input_dim, output_dim, lr, gamma, epsilon=0.9, epsilon_decay=0.995):
@@ -290,23 +290,30 @@ for i in range(num_episodes):
         # Plot learning curve using matplotlib (optional)
 
 while True:
-    env.reset()
+    env.reset()  # Reset the game board
+
     while not env.done:
         # Player 1's move
         env.render()
-        valid_action = False
-        _, _, _, _ = env.step(agent1.act(env.board.flatten()))  # Pass flattened board state
-        while not valid_action:
+        valid_move = False
+        while not valid_move:
             player_action = int(input("Enter your move (1-7): ")) - 1
             if 0 <= player_action < env.get_board_dimensions()[1] and env.board[0, player_action] == 0:
-                valid_action = True
                 env.step(player_action)
+                valid_move = True
             else:
                 print("Invalid move. Please choose an empty column.")
-        # Agent 2's move (after valid player 1 move)
-        env.render()
-        _, _, _, _ = env.step(agent1.act(env.board.flatten()))
 
+        # Check for game over after player's move
+        if env.done:
+            break
+
+        # Agent's move
+        env.render()
+        agent_action = agent1.act(env.board.flatten())
+        env.step(agent_action)
+
+    # Display winner and prompt to play again
     env.render()
     print(f"Winner: {env.winner}")
 
